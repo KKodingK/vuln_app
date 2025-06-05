@@ -41,14 +41,16 @@ app.get('/', (req, res) => res.redirect('/login'));
 // Render login page
 app.get('/login', (req, res) => res.render('login', { error: null }));
 
-// Login route - vulnerable to SQL injection because of the direct parameterized query (simulate a safe example here)
+// Unsafe login route vulnerable to SQL Injection!
 app.post('/login', (req, res) => {
   const { username, password } = req.body;
   console.log('Login attempt:', username, password);
 
-  // Using parameterized query to prevent injection, but if you want SQL injection vuln,
-  // you can change to string concatenation (not recommended in practice).
-  db.get('SELECT * FROM users WHERE username = ? AND password = ?', [username, password], (err, user) => {
+  // WARNING: Unsafe string concatenation - vulnerable to SQL Injection
+  const query = `SELECT * FROM users WHERE username = '${username}' AND password = '${password}'`;
+  console.log('Executing query:', query);
+
+  db.get(query, (err, user) => {
     if (err) {
       console.error('Database error:', err);
       return res.render('login', { error: 'Database error' });
@@ -77,11 +79,12 @@ app.get('/users', (req, res) => {
 
 // Middleware for admin-only access
 function requireAdmin(req, res, next) {
- // if (req.session.user && req.session.user.role === 'admin') {
+  // Uncomment below in real apps
+  // if (req.session.user && req.session.user.role === 'admin') {
     next();
- // } else {
-  //  res.status(403).send('Access denied: Admins only');
- // }
+  // } else {
+  //   res.status(403).send('Access denied: Admins only');
+  // }
 }
 
 // Admin panel - restricted access
@@ -93,7 +96,6 @@ app.get('/admin', requireAdmin, (req, res) => {
 app.get('/dashboard', (req, res) => {
   if (!req.session.user) return res.redirect('/login');
 
-  // Broken Access Control example: showing admin access info incorrectly
   const isAdmin = req.session.user.role === 'admin';
 
   res.send(`
@@ -109,7 +111,6 @@ app.get('/dashboard', (req, res) => {
 
 // Reflected XSS vulnerability
 app.get('/xss', (req, res) => {
-  // Dangerous: directly embedding user input without sanitization
   res.send(`<p>You searched for: ${req.query.q}</p>`);
 });
 
